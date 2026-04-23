@@ -36,22 +36,18 @@ com.mycompany.smartcampusapi
 
 
 How to Run the Project
+1. Build Project
+Run the following command in the root directory:
 
-1. Clone Repository
-git clone https://github.com/NethmiDivakara/SmartCampusAPI.git
+Bash
+mvn clean install
 
-2. Open in NetBeans
-Ensure Jakarta EE 10 plugin is installed
-Open project as Maven project
+2. Deploy to Tomcat
+Open NetBeans Services tab.
 
-3. Build Project
-Right click → Clean and Build
+Right-click Apache Tomcat or TomEE and select Start.
 
-4. Deploy Server
-Run on GlassFish 8
-
-5. Access API
-http://localhost:8080/SmartCampusAPI/api/v1
+Right-click your project and select Deploy.
 
 
 
@@ -78,16 +74,20 @@ POST   /api/v1/sensors/{sensorId}/readings
   CURL Test Cases
 1️⃣ Get API Info
 curl http://localhost:8080/SmartCampusAPI/api/v1
+
 2️⃣ Create Room
 curl -X POST http://localhost:8080/SmartCampusAPI/api/v1/rooms \
 -H "Content-Type: application/json" \
 -d '{"id":"LIB-301","name":"Library Study Room","capacity":50}'
+
 3️⃣ Get All Rooms
 curl http://localhost:8080/SmartCampusAPI/api/v1/rooms
+
 4️⃣ Create Sensor
 curl -X POST http://localhost:8080/SmartCampusAPI/api/v1/sensors \
 -H "Content-Type: application/json" \
 -d '{"id":"TEMP-001","type":"Temperature","status":"ACTIVE","currentValue":25,"roomId":"LIB-301"}'
+
 5️⃣ Add Sensor Reading
 curl -X POST http://localhost:8080/SmartCampusAPI/api/v1/sensors/TEMP-001/readings \
 -H "Content-Type: application/json" \
@@ -96,27 +96,27 @@ curl -X POST http://localhost:8080/SmartCampusAPI/api/v1/sensors/TEMP-001/readin
 
 Report Answers
 Part 1: Service Architecture & Setup
-A1.In JAX-RS, the default lifecycle for resource classes (like RoomResource or SensorResource) is per-request. This means the runtime creates a new instance of the class for every incoming HTTP request and discards it after the response is sent.
-Because instances are not shared between requests, we cannot store our campus data (Rooms/Sensors) as simple variables inside the resource classes. Instead, we implemented a Singleton DataStore. This ensures that every per-request resource instance accesses the same central memory. To prevent data loss or "race conditions" where two requests try to update the same list at once, we used ConcurrentHashMap. This thread-safe structure allows multiple threads to read and write simultaneously without corrupting the in-memory data.
+A1.In JAX-RS, the default lifecycle is per-request. A new instance is created for every HTTP request and destroyed after. To persist data, a Singleton DataStore was used. To prevent race conditions, we utilize ConcurrentHashMap, which allows thread-safe operations in a multi-threaded environment.
 
-A2.Hypermedia allows an API to be self-discovering. By including links in the "Discovery" endpoint, client developers do not need to hard-code every URL path. If the API structure evolves or versioning changes, the client can simply follow the links provided in the JSON response. This reduces the dependency on static documentation and makes the API more resilient to change.
+A2.HATEOAS (Hypermedia) makes an API self-descriptive. By providing links in the response, client developers are decoupled from the hardcoded URL structure, allowing the API to evolve without breaking clients.
 
 Part 2: Room Management
-A1.Returning only IDs minimizes network bandwidth, making the response "lighter." However, it forces the client to make a new HTTP request for every single room ID to get its metadata (the "N+1 problem"), which increases total latency. Returning full objects increases the payload size but allows the client to display all room details in a single "trip" to the server, significantly improving the user experience for client-side processing.
+A1.Returning only IDs saves bandwidth but causes the "N+1 problem" (multiple requests for metadata). Returning full objects increases payload but allows the client to display all data in one trip.
 
-A2.Yes, the DELETE operation is idempotent. When the client sends the first request, the server finds the room, deletes it, and returns 204 No Content. If the client sends the exact same request again, the room is already gone, so the server returns 404 Not Found. While the status codes are different, the state of the server (the room being deleted) remains exactly the same regardless of how many times the request is repeated.
+A2.DELETE is idempotent. The first request returns 204 No Content (deletion). Subsequent requests return 404 Not Found (already gone), but the server state remains identical.
 
 Part 3: Sensor Operations & Integrity
-A1.The @Consumes(MediaType.APPLICATION_JSON) annotation acts as a guard. If a client sends application/xml or text/plain, JAX-RS will automatically intercept the request and return an HTTP 415 Unsupported Media Type error. The resource method will never be executed, protecting the business logic from attempting to process incompatible data formats.
+A1.@Consumes acts as a guard. If a client sends an incorrect format (e.g., XML), JAX-RS returns HTTP 415 Unsupported Media Type immediately.
 
-A2.Path parameters are used to identify a specific resource or hierarchy (e.g., a specific sensor ID). Query parameters are used for filtering or searching a collection. Using /type/CO2 implies that "type" and "CO2" are levels in a physical hierarchy, which is semantically incorrect. Query parameters are superior because they are optional and allow clients to combine multiple filters (like ?type=CO2&status=ACTIVE) without creating complex, rigid URL structures.
+A2.Query parameters are superior for filtering (e.g., ?type=CO2) because they are optional and combinable. Path parameters imply a physical hierarchy (e.g., /type/CO2), which is semantically incorrect for searches.
 
 Part 4: Deep Nesting with Sub-Resources
-A1.The Sub-Resource Locator pattern allows us to delegate logic to dedicated classes like SensorReadingResource. In a large API, defining every nested path (like sensors/{id}/readings/{rid}) in one massive class creates a "God Object" that is hard to maintain. By delegating, we separate concerns: SensorResource manages sensor metadata, while SensorReadingResource handles historical data. This modularity makes the code cleaner, easier to test, and more scalable.
+A1.The Sub-Resource Locator pattern prevents "God Classes." It delegates reading logic to SensorReadingResource, separating historical data management from sensor metadata.
 
 Part 5: Advanced Error Handling & Logging
-A1.An HTTP 404 error usually means the URL or endpoint itself was not found. When a client sends a valid JSON payload but refers to a roomId that doesn't exist, the "entity" itself is unprocessable. HTTP 422 (Unprocessable Entity) tells the client: "I understood your request and the URL is correct, but the data you provided is logically invalid." This distinction helps developers debug whether they have a broken link (404) or a data relationship error (422).
+A1.HTTP 422 (Unprocessable Entity) is used when the JSON is valid but a reference (like roomId) does not exist. This is semantically more accurate than a 404, which implies the URL itself is wrong.
 
-A2.Exposing stack traces provides an attacker with a "map" of your server’s internal structure. It reveals the exact class names, method names, line numbers, and—most dangerously—the versions of libraries (like Jersey or the JDK) you are using. Attackers can use this information to search for "known vulnerabilities" in those specific versions to launch a targeted exploit.
+A2.Exposing stack traces reveals internal class structures and specific library versions (e.g., Jersey 3.x, JDK 21). Attackers can use this to identify known vulnerabilities (CVEs) or orchestrate DoS attacks.
 
-A3.Logging is a "cross-cutting concern." Using ContainerRequestFilter and ContainerResponseFilter allows us to centralize logging in one single class. If we manually inserted log statements in every resource method, the code would be cluttered and hard to maintain. A filter ensures that every request and response is logged automatically, providing consistent observability across the entire API with a single piece of code.
+
+A3.Logging is a cross-cutting concern. By using LoggingFilter, we apply the DRY (Don’t Repeat Yourself) principle, ensuring all requests and status codes are logged automatically without cluttering resource methods.
