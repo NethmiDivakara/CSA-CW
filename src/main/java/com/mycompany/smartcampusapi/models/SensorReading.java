@@ -12,11 +12,11 @@ import java.util.UUID;
 
 public class SensorReading {
 
-    private String id;        // Recommended as UUID [cite: 94]
+    private String id;        // Recommended as UUID 
 
-    private long timestamp;   // Epoch time [cite: 90]
+    private long timestamp;   // Epoch time 
 
-    private double value;     // The actual metric [cite: 92]
+    private double value;     // The actual metric 
 
 
 

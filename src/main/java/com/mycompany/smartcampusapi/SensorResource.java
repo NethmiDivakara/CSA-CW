@@ -68,7 +68,7 @@ public class SensorResource {
     }
 
     /**
-     * FIXED Sub-Resource Locator (Task 4.1)
+     * Sub-Resource Locator (Task 4.1)
      * We capture the sensorId from the path and pass it to the constructor.
      */
     @Path("/{sensorId}/readings")

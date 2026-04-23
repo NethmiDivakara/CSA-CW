@@ -18,7 +18,7 @@ public class SensorReadingResource {
     private final DataStore dataStore = DataStore.getInstance();
     private final String sensorId;
 
-    // 1. FIXED: Constructor receives sensorId from the parent SensorResource
+    // 1. Constructor receives sensorId from the parent SensorResource
     public SensorReadingResource(String sensorId) {
         this.sensorId = sensorId;
     }
@@ -36,7 +36,7 @@ public class SensorReadingResource {
             throw new SensorUnavailableException("Sensor " + sensorId + " is under maintenance.");
         }
 
-        // 4. FIXED: Requirement for UUID and Timestamp generation
+        // 4. Requirement for UUID and Timestamp generation
         reading.setId(UUID.randomUUID().toString());
         reading.setTimestamp(System.currentTimeMillis());
 
@@ -51,7 +51,7 @@ public class SensorReadingResource {
 
     @GET
     public List<SensorReading> getReadings() {
-        // 7. FIXED: Pull readings using the ID from the constructor
+        // 7.  Pull readings using the ID from the constructor
         return dataStore.getReadings().getOrDefault(sensorId, new ArrayList<>());
     }
 }

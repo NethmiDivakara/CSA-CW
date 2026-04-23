@@ -17,7 +17,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
     @Override
     public Response toResponse(Throwable exception) {
         // 1. If the error is a standard JAX-RS error (like 404 Not Found), 
-        // let the server handle it normally so you don't get a 500.
+        // the server handle it normally so you don't get a 500.
         if (exception instanceof WebApplicationException) {
             return ((WebApplicationException) exception).getResponse();
         }

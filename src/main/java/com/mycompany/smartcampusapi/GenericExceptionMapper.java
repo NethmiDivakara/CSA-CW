@@ -9,12 +9,12 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
-@Provider // Important: This registers the class automatically
+@Provider // This registers the class automatically
 public class GenericExceptionMapper implements ExceptionMapper<Throwable> {
 
     @Override
     public Response toResponse(Throwable exception) {
-        // Log the error to your NetBeans console so you can still see it
+        // Logginf the error to your NetBeans console 
         exception.printStackTrace();
 
         ErrorMessage error = new ErrorMessage(
